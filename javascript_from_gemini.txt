@@ -1,0 +1,73 @@
+// Get the input text from the previous node
+const rawText = items[0].json.text; 
+
+// Split the text into lines
+const lines = rawText.split('\n');
+
+let results = [];
+let currentHost = "";
+let currentHostData = null;
+
+for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+
+    // 1. Detect Host Header (e.g., 192.168.168.44 -> Test-Bed-r)
+    const hostMatch = line.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s*->\s*(.+)$/);
+    
+    if (hostMatch) {
+        // If we found a new host, reset our tracker
+        currentHost = line;
+        currentHostData = {
+            host_info: currentHost,
+            critical_partitions: []
+        };
+    } 
+    // 2. Detect Partition lines with percentages
+    else if (line.includes('%')) {
+        // Regex to find the number followed by %
+        const percentMatch = line.match(/(\d+)%/);
+        
+        if (percentMatch) {
+            const usage = parseInt(percentMatch[1]);
+            
+            // 3. Filter for usage > 70%
+            if (usage > 70 && currentHostData) {
+                currentHostData.critical_partitions.push(line);
+            }
+        }
+    }
+
+    // If we finished a host section and found issues, prepare to output
+    // Note: This logic assumes hosts are separated by headers.
+    // To ensure we capture the last host in the file, we check at the end of the loop.
+}
+
+// Group back into the format you requested
+let output = [];
+// Logic to handle multiple hosts in one file
+const hosts = rawText.split(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*)$/gm);
+// Clean up empty splits
+for (let i = 1; i < hosts.length; i += 2) {
+    let header = hosts[i].trim();
+    let body = hosts[i+1];
+    
+    let criticalLines = body.split('\n')
+        .filter(l => {
+            const m = l.match(/(\d+)%/);
+            return m && parseInt(m[1]) > 70;
+        })
+        .map(l => l.trim());
+
+    if (criticalLines.length > 0) {
+        output.push({
+            json: {
+                host: header,
+                issues: criticalLines.join('\n'),
+                full_report: `${header}\n${criticalLines.join('\n')}`
+            }
+        });
+    }
+}
+
+return output;
