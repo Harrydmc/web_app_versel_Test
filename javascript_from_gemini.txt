@@ -1,6 +1,7 @@
 // Get the input text from the previous node
 const rawText = items[0].json.text; 
-
+057fba5d-5259-4eea-ad90-da291c967f5d
+http://localhost:5678/settings/usage?key=057fba5d-5259-4eea-ad90-da291c967f5d
 // Split the text into lines
 const lines = rawText.split('\n');
 
